@@ -134,10 +134,40 @@ Explain whether the expected value of your account balance after one flip is gre
 ```{python}
 #| label: q1-expected-value-py
 
-# Compute the expected value after one coin flip.
-# Round monetary values to whole dollars; percentages to 1 decimal.
-# Present your findings OUTSIDE this chunk in narrative prose.
-# Example: "The expected value is $36,000, a 20.0% gain over the buy-in."
+# Parameters for the game
+buy_in = 30_000
+p_heads = 0.5
+p_tails = 0.5
+
+# Multipliers after one flip
+mult_heads = 1.5   # Heads: increase by 50%
+mult_tails = 0.6   # Tails: decrease by 40%
+
+# Compute expected value after one flip
+expected_after_one_flip = (
+    p_heads * mult_heads * buy_in +
+    p_tails * mult_tails * buy_in
+)
+
+# Compute expected gain relative to buy-in
+gain = expected_after_one_flip - buy_in
+gain_pct = gain / buy_in * 100
+
+# Determine the comparison with the buy-in
+if abs(gain) < 1e-9:
+    relation = "equal to"
+elif gain > 0:
+    relation = "greater than"
+else:
+    relation = "less than"
+
+expected_rounded = round(expected_after_one_flip)  # whole dollars
+gain_rounded = round(gain)                          # whole dollars
+gain_pct_rounded = round(gain_pct, 1)              # 1 decimal place
+
+print(f"Expected balance after one flip: ${expected_rounded:,.0f}")
+print(f"Expected gain: ${gain_rounded:,.0f} ({gain_pct_rounded:.1f}%)")
+print(f"This expected value is {relation} the buy-in of ${buy_in:,.0f}.")
 
 ```
 
@@ -148,6 +178,7 @@ Narrate and visualize what happens to your account balance over the course of on
 ```{python}
 #| label: q2-single-sim-py
 #| fig-cap: "Single simulation path of account balance"
+#| echo: false
 
 # Simulate one path from $30,000 over N periods.
 # Use matplotlib (Object Oriented style) for the time-series plot.
@@ -155,6 +186,67 @@ Narrate and visualize what happens to your account balance over the course of on
 # Round final balance to whole dollars in your narrative.
 # Present your interpretation OUTSIDE this chunk—describe the trajectory
 # and whether you would be satisfied with this outcome.
+
+import random
+import matplotlib.pyplot as plt
+
+# Assumption (edit if your starting age differs)
+buy_in = 30_000
+start_age = 45
+end_age = 75
+N = end_age - start_age
+
+random.seed(42)
+
+wealth = [buy_in]
+head_count = 0
+tail_count = 0
+
+current = buy_in
+for _ in range(N):
+    # Use random.choice to match the same RNG pattern.
+    c = random.choice([1, 0])  # 1 = Heads, 0 = Tails
+    if c == 1:
+        current *= 1.5
+        head_count += 1
+    else:
+        current *= 0.6
+        tail_count += 1
+    wealth.append(current)
+
+ages = list(range(start_age, end_age + 1))
+
+# Plot wealth over time
+fig, ax = plt.subplots(figsize=(9, 4.5))
+ax.plot(ages, wealth, marker="o", linewidth=2)
+ax.axhline(buy_in, color="gray", linestyle="--", linewidth=1)
+ax.set_title("Single Simulation: Wealth Over Time")
+ax.set_xlabel("Age")
+ax.set_ylabel("Wealth ($)")
+ax.grid(True, alpha=0.25)
+fig.tight_layout()
+plt.show()
+
+# Key summary stats for narrative
+final_balance = round(wealth[-1])
+min_balance = round(min(wealth))
+max_balance = round(max(wealth))
+
+checkpoints = {
+    start_age: round(wealth[0]),
+    start_age + 5: round(wealth[5]),
+    start_age + 10: round(wealth[10]),
+    start_age + 15: round(wealth[15]),
+    start_age + 20: round(wealth[20]),
+    start_age + 25: round(wealth[25]),
+    end_age: round(wealth[-1]),
+}
+
+print(f"Assumed start age: {start_age}, number of flips N: {N}")
+print(f"Heads: {head_count}, Tails: {tail_count}")
+print(f"Final balance at age {end_age}: ${final_balance:,}")
+print(f"Min balance: ${min_balance:,}, Max balance: ${max_balance:,}")
+print("Checkpoint balances (age: $):", checkpoints)
 
 ```
 
@@ -165,6 +257,7 @@ Describe the distribution of final account balances across 100 simulations. Repo
 ```{python}
 #| label: q3-dist-100-py
 #| fig-cap: "Distribution of final balances across 100 simulations"
+#| echo: false
 
 # Run 100 simulations and plot a histogram of final balances.
 # Add a vertical line at $30,000 for reference.
@@ -172,6 +265,51 @@ Describe the distribution of final account balances across 100 simulations. Repo
 # Round balances to whole dollars; probabilities to 2-3 decimals.
 # Present these statistics OUTSIDE this chunk in narrative form.
 # Example: "The median outcome was $12,345, well below the initial investment."
+
+import random
+import statistics
+import matplotlib.pyplot as plt
+
+# Game parameters (match Section 2)
+buy_in = 30_000
+start_age = 45
+end_age = 75
+N = end_age - start_age
+num_sims = 100
+
+random.seed(123)
+
+final_balances = []
+for _ in range(num_sims):
+    current = buy_in
+    for _ in range(N):
+        # Fair coin: Heads -> *1.5, Tails -> *0.6
+        if random.random() < 0.5:
+            current *= 1.5
+        else:
+            current *= 0.6
+    final_balances.append(round(current))
+
+mean_final = round(statistics.mean(final_balances))
+median_final = round(statistics.median(final_balances))
+prob_final_gt_buyin = sum(1 for b in final_balances if b > buy_in) / num_sims
+prob_final_gt_buyin_rounded = round(prob_final_gt_buyin, 3)
+
+# Plot distribution
+fig, ax = plt.subplots(figsize=(9, 4.5))
+ax.hist(final_balances, bins=20, color="skyblue", edgecolor="gray")
+ax.axvline(buy_in, color="red", linestyle="--", linewidth=2, label="Buy-in ($30,000)")
+ax.set_title("100 Simulations: Final Wealth Distribution")
+ax.set_xlabel("Final balance ($)")
+ax.set_ylabel("Count")
+ax.legend()
+fig.tight_layout()
+plt.show()
+
+print(f"Assumed start age: {start_age}, end age: {end_age}, N flips: {N}")
+print(f"Mean final balance: ${mean_final:,}")
+print(f"Median final balance: ${median_final:,}")
+print(f"P(final > ${buy_in:,}): {prob_final_gt_buyin_rounded}")
 
 ```
 
@@ -181,11 +319,40 @@ Report the probability that your final balance exceeds $30,000. Interpret what t
 
 ```{python}
 #| label: q4-prob-original-py
+#| echo: false
 
 # Using the 100 simulations, estimate P(final > $30,000).
 # Round the probability to 2-3 decimal places.
 # Present this result OUTSIDE this chunk in narrative form.
 # Interpret what this probability means for your investment decision.
+
+import random
+
+# Match the setup used in Section 3
+buy_in = 30_000
+start_age = 45
+end_age = 75
+N = end_age - start_age
+num_sims = 100
+
+random.seed(123)
+
+count_greater = 0
+for _ in range(num_sims):
+    current = buy_in
+    for _ in range(N):
+        if random.random() < 0.5:
+            current *= 1.5
+        else:
+            current *= 0.6
+    if round(current) > buy_in:
+        count_greater += 1
+
+prob = count_greater / num_sims
+prob_rounded = round(prob, 3)
+
+print(f"Estimated P(final > ${buy_in:,}): {prob_rounded}")
+print(f"Count out of {num_sims}: {count_greater}")
 
 ```
 
@@ -196,6 +363,7 @@ Instead of having the full balance at risk with each coin flip, assume only 25% 
 ```{python}
 #| label: q5-modified-25pct-py
 #| fig-cap: "Modified strategy distribution (bet 25% each round)"
+#| echo: false
 
 # Implement the modified game where only 25% of your balance is at risk each flip.
 # Run 100 simulations and plot the distribution of final balances.
@@ -204,11 +372,124 @@ Instead of having the full balance at risk with each coin flip, assume only 25% 
 # Round balances to whole dollars; probabilities to 2-3 decimals.
 # Present your comparison and recommendation OUTSIDE this chunk in narrative form.
 
+import random
+import statistics
+import matplotlib.pyplot as plt
+
+buy_in = 30_000
+start_age = 45
+end_age = 75
+N = end_age - start_age
+num_sims = 100
+
+random.seed(456)
+
+final_original = []
+final_modified = []
+
+for _ in range(num_sims):
+    wealth_orig = buy_in
+    wealth_mod = buy_in
+
+    for _ in range(N):
+        # Single coin flip per year, shared across both strategies
+        is_heads = random.random() < 0.5
+
+        # Original strategy: full balance at risk
+        if is_heads:
+            wealth_orig *= 1.5
+        else:
+            wealth_orig *= 0.6
+
+        # Modified strategy: only 25% of balance at risk each year
+        risky_part = 0.25 * wealth_mod
+        safe_part = 0.75 * wealth_mod
+        if is_heads:
+            risky_part *= 1.5
+        else:
+            risky_part *= 0.6
+        wealth_mod = safe_part + risky_part
+
+    final_original.append(round(wealth_orig))
+    final_modified.append(round(wealth_mod))
+
+# Summary stats
+mean_orig = round(statistics.mean(final_original))
+median_orig = round(statistics.median(final_original))
+prob_orig_gt = sum(1 for b in final_original if b > buy_in) / num_sims
+
+mean_mod = round(statistics.mean(final_modified))
+median_mod = round(statistics.median(final_modified))
+prob_mod_gt = sum(1 for b in final_modified if b > buy_in) / num_sims
+
+prob_orig_gt_r = round(prob_orig_gt, 3)
+prob_mod_gt_r = round(prob_mod_gt, 3)
+
+# Side-by-side histograms
+fig, axes = plt.subplots(1, 2, figsize=(12, 4.5), sharey=True)
+
+axes[0].hist(final_original, bins=20, color="salmon", edgecolor="gray")
+axes[0].axvline(buy_in, color="black", linestyle="--", linewidth=1)
+axes[0].set_title("Original strategy\n(100 simulations)")
+axes[0].set_xlabel("Final balance ($)")
+axes[0].set_ylabel("Count")
+
+axes[1].hist(final_modified, bins=20, color="skyblue", edgecolor="gray")
+axes[1].axvline(buy_in, color="black", linestyle="--", linewidth=1)
+axes[1].set_title("Modified 25% at risk\n(100 simulations)")
+axes[1].set_xlabel("Final balance ($)")
+
+fig.tight_layout()
+plt.show()
+
+print("Original strategy:")
+print(f"  Mean final balance:   ${mean_orig:,}")
+print(f"  Median final balance: ${median_orig:,}")
+print(f"  P(final > ${buy_in:,}): {prob_orig_gt_r}")
+
+print("\nModified 25% strategy:")
+print(f"  Mean final balance:   ${mean_mod:,}")
+print(f"  Median final balance: ${median_mod:,}")
+print(f"  P(final > ${buy_in:,}): {prob_mod_gt_r}")
+
 ```
 
 ### 6) The Kelly Criterion
 
 Explain what the Kelly Criterion is and how it relates to the modified strategy from Section 5. Does the Kelly Criterion support your recommendation?
+
+```{python}
+#| label: q6-kelly-criterion-py
+#| echo: false
+
+import math
+
+# Fraction f of wealth bet each year:
+# Heads: wealth -> wealth * (1 + 0.5 f)
+# Tails: wealth -> wealth * (1 - 0.4 f)
+# Kelly chooses f to maximize expected log growth:
+# g(f) = 0.5 * log(1 + 0.5 f) + 0.5 * log(1 - 0.4 f)
+
+def expected_log_growth(f: float) -> float:
+    if f < 0 or f >= 2.5:  # 1 - 0.4 f must stay > 0; we also cap f reasonably
+        return float("-inf")
+    return 0.5 * math.log(1 + 0.5 * f) + 0.5 * math.log(1 - 0.4 * f)
+
+best_f = None
+best_g = float("-inf")
+
+# Simple grid search over bet fractions from 0% to 100%
+for i in range(0, 1001):
+    f = i / 1000  # bet fraction
+    g = expected_log_growth(f)
+    if g > best_g:
+        best_g = g
+        best_f = f
+
+print(f"Approximate Kelly-optimal bet fraction f*: {best_f:.3f}")
+print(f"Expected log growth at f*: {best_g:.6f} per period")
+
+```
 
 
 ## Professional Presentation
